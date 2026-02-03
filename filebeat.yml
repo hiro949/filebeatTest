@@ -1,0 +1,79 @@
+# Filebeat configuration for greeting API
+# This configuration collects JSON-formatted logs and sends them to Elasticsearch/Kibana
+
+filebeat.inputs:
+  # Collect logs from the application
+  - type: log
+    enabled: true
+    paths:
+      # Path to application log files
+      - /var/log/greeting-api/*.log
+      # For Docker: /app/logs/*.log
+
+    # Parse JSON logs
+    json.keys_under_root: true
+    json.add_error_key: true
+    json.message_key: msg
+
+    # Add custom fields
+    fields:
+      app: greeting-api
+      environment: production
+    fields_under_root: true
+
+  # Alternative: Collect from Docker container logs
+  - type: container
+    enabled: false
+    paths:
+      - '/var/lib/docker/containers/*/*.log'
+
+    # Filter for specific container
+    containers.ids:
+      - '*'  # Or specify container ID
+
+    # Parse JSON
+    json.keys_under_root: true
+    json.add_error_key: true
+
+# Elasticsearch output
+output.elasticsearch:
+  hosts: ["localhost:9200"]
+  # hosts: ["elasticsearch:9200"]  # For Docker
+
+  # Index settings
+  index: "greeting-api-%{+yyyy.MM.dd}"
+
+  # Authentication (if required)
+  # username: "elastic"
+  # password: "changeme"
+
+# Kibana configuration
+setup.kibana:
+  host: "localhost:5601"
+  # host: "kibana:5601"  # For Docker
+
+# Index template settings
+setup.template.name: "greeting-api"
+setup.template.pattern: "greeting-api-*"
+setup.template.enabled: true
+setup.template.overwrite: false
+
+# Dashboards
+setup.dashboards.enabled: true
+
+# Logging
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7
+  permissions: 0644
+
+# Processors to enrich data
+processors:
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+  - add_cloud_metadata: ~
+  - add_docker_metadata: ~
+  - add_kubernetes_metadata: ~
