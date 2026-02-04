@@ -1,0 +1,9 @@
+services:
+  greeting-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: greeting-api
+    ports:
+      - "8080:8080"
+    restart: unless-stopped

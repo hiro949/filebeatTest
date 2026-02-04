@@ -1,4 +1,4 @@
-.PHONY: help test test-verbose test-coverage generate build run clean lint golangci-lint
+.PHONY: help test test-verbose test-coverage generate build run clean lint golangci-lint docker-build docker-run docker-stop compose-up compose-down compose-logs k8s-deploy k8s-delete k8s-status k8s-logs k8s-kibana
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -59,3 +59,53 @@ golangci-lint-fix: ## Run golangci-lint with auto-fix
 lint: fmt vet golangci-lint ## Run all linters
 
 all: clean generate lint test build ## Run all steps
+
+# Docker targets
+DOCKER_IMAGE := greeting-api
+DOCKER_TAG := latest
+
+docker-build: ## Build Docker image
+	docker build -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
+
+docker-run: ## Run Docker container
+	docker run -d --name $(DOCKER_IMAGE) -p 8080:8080 $(DOCKER_IMAGE):$(DOCKER_TAG)
+
+docker-stop: ## Stop and remove Docker container
+	docker stop $(DOCKER_IMAGE) && docker rm $(DOCKER_IMAGE)
+
+compose-up: ## Start with docker-compose
+	docker compose up -d --build
+
+compose-down: ## Stop docker-compose
+	docker compose down
+
+compose-logs: ## Show docker-compose logs
+	docker compose logs -f
+
+# Kubernetes targets
+k8s-deploy: docker-build ## Deploy to Kubernetes with Filebeat sidecar
+	kubectl apply -f k8s/namespace.yaml
+	kubectl apply -f k8s/elasticsearch.yaml
+	kubectl apply -f k8s/kibana.yaml
+	kubectl apply -f k8s/filebeat-configmap.yaml
+	kubectl apply -f k8s/greeting-api.yaml
+	@echo "Waiting for pods to be ready..."
+	kubectl wait --for=condition=ready pod -l app=elasticsearch -n greeting --timeout=120s || true
+	kubectl wait --for=condition=ready pod -l app=kibana -n greeting --timeout=120s || true
+	kubectl wait --for=condition=ready pod -l app=greeting-api -n greeting --timeout=120s || true
+
+k8s-delete: ## Delete Kubernetes resources
+	kubectl delete -f k8s/ --ignore-not-found
+
+k8s-status: ## Show Kubernetes status
+	kubectl get all -n greeting
+
+k8s-logs: ## Show greeting-api logs
+	kubectl logs -f -l app=greeting-api -c greeting-api -n greeting
+
+k8s-logs-filebeat: ## Show Filebeat sidecar logs
+	kubectl logs -f -l app=greeting-api -c filebeat -n greeting
+
+k8s-kibana: ## Get Kibana URL
+	@echo "Kibana URL: http://localhost:$$(kubectl get svc kibana -n greeting -o jsonpath='{.spec.ports[0].nodePort}')"
+	@echo "Or use port-forward: kubectl port-forward svc/kibana 5601:5601 -n greeting"

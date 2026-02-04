@@ -130,6 +130,137 @@ Logs are written to stdout in JSON format:
 ./greeting-api > /var/log/greeting-api/app.log 2>&1
 ```
 
+## Kubernetes Deployment (Minikube)
+
+FilebeatサイドカーとElasticsearch/Kibanaを使ったログ収集環境をMinikubeにデプロイできます。
+
+### 前提条件
+
+- Docker Desktop (WSL2統合有効)
+- Minikube
+- kubectl
+- make
+
+### 1. Minikubeの起動
+
+```bash
+minikube start --memory=4096 --cpus=2
+```
+
+### 2. Dockerイメージのビルド
+
+Minikubeの環境でビルドします：
+
+```bash
+eval $(minikube docker-env)
+make docker-build
+```
+
+### 3. Kubernetesへデプロイ
+
+```bash
+make k8s-deploy
+```
+
+全てのPodが起動するまで待ちます：
+
+```bash
+make k8s-status
+```
+
+以下のように全てのPodが`Running`になればOKです：
+
+```
+NAME                             READY   STATUS    RESTARTS   AGE
+elasticsearch-xxx                1/1     Running   0          60s
+greeting-api-xxx                 2/2     Running   0          60s
+kibana-xxx                       1/1     Running   0          60s
+```
+
+### 4. APIの動作確認
+
+別ターミナルでAPIにアクセスします：
+
+```bash
+minikube service greeting-api -n greeting --url
+```
+
+表示されたURLでAPIをテスト：
+
+```bash
+curl "http://127.0.0.1:<port>/greet?name=test"
+```
+
+### 5. Kibanaでログを確認
+
+Kibanaを開きます：
+
+```bash
+minikube service kibana -n greeting
+```
+
+ブラウザが開いたら、以下の手順でログを確認：
+
+1. 左上の **☰** (ハンバーガーメニュー) をクリック
+2. **Stack Management** → **Index Patterns** を選択
+3. **Create index pattern** をクリック
+4. Index pattern に `greeting-api-*` を入力
+5. **Next step** をクリック
+6. Time field で `@timestamp` を選択
+7. **Create index pattern** をクリック
+8. 左上の **☰** → **Discover** を選択
+9. 左上のドロップダウンで `greeting-api-*` を選択
+
+これでgreeting-apiのログが表示されます。
+
+### Kubernetesコマンド一覧
+
+| コマンド | 説明 |
+|---------|------|
+| `make k8s-deploy` | Kubernetesにデプロイ |
+| `make k8s-status` | Pod/Serviceの状態確認 |
+| `make k8s-logs` | greeting-apiのログを表示 |
+| `make k8s-logs-filebeat` | Filebeatのログを表示 |
+| `make k8s-delete` | Kubernetesリソースを削除 |
+
+### アーキテクチャ
+
+```
+┌─────────────────────────────────────────────┐
+│ Kubernetes (Minikube)                       │
+│                                             │
+│  ┌─────────────────────────────────────┐   │
+│  │ greeting-api Pod                    │   │
+│  │  ├── greeting-api (メインコンテナ)  │   │
+│  │  └── filebeat (サイドカー) ─────────┼───┼──► Elasticsearch
+│  └─────────────────────────────────────┘   │        │
+│                                             │        ▼
+│  Elasticsearch ◄─────────────────────────── Kibana (可視化)
+└─────────────────────────────────────────────┘
+```
+
+### トラブルシューティング
+
+**Elasticsearchが起動しない場合：**
+```bash
+minikube stop
+minikube delete
+minikube start --memory=6144 --cpus=2
+```
+
+**Kibanaで500エラーが出る場合：**
+```bash
+kubectl rollout restart deployment kibana -n greeting
+```
+
+**Dockerイメージが見つからない場合：**
+```bash
+eval $(minikube docker-env)
+make docker-build
+```
+
+---
+
 ## Filebeat Integration
 
 ### Setup
