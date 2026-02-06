@@ -225,21 +225,24 @@ You can now view the greeting-api logs.
 
 ### Architecture
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│ Kubernetes (Minikube)                                        │
-│                                                              │
-│  ┌─────────────────────────────────────┐                     │
-│  │ greeting-api Pod                    │                     │
-│  │  ├── greeting-api (main container)  │                     │
-│  │  └── filebeat (sidecar) ────────────┼──┐                  │
-│  └─────────────────────────────────────┘  │                  │
-│                                           ▼                  │
-│  ┌─────────────────┐              ┌─────────────────┐        │
-│  │     Kibana      │─────────────►│  Elasticsearch  │        │
-│  │ (visualization) │              │    (storage)    │        │
-│  └─────────────────┘              └─────────────────┘        │
-└──────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph K8s["Kubernetes (Minikube)"]
+        subgraph Pod["greeting-api Pod"]
+            API["greeting-api<br/>(main container)"]
+            FB["filebeat<br/>(sidecar)"]
+        end
+
+        ES["Elasticsearch<br/>(storage)"]
+        KB["Kibana<br/>(visualization)"]
+
+        API -->|"logs to<br/>/var/log/app"| FB
+        FB -->|"sends logs"| ES
+        KB -->|"queries"| ES
+    end
+
+    User["User"] -->|"HTTP request"| API
+    User -->|"view logs"| KB
 ```
 
 ### Troubleshooting
