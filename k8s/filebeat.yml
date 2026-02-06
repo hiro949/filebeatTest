@@ -1,0 +1,77 @@
+# Filebeat configuration for greeting API
+# This configuration collects JSON-formatted logs and sends them to Elasticsearch/Kibana
+
+filebeat.inputs:
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/app/*.log
+
+    # Parse JSON logs
+    json.keys_under_root: true
+    json.add_error_key: true
+    json.message_key: msg
+
+    # Add custom fields
+    fields:
+      app: greeting-api
+      environment: kubernetes
+    fields_under_root: true
+
+# Elasticsearch output
+output.elasticsearch:
+  hosts: ["http://elasticsearch:9200"]
+
+# Kibana configuration
+setup.kibana:
+  host: "http://kibana:5601"
+
+# Index template settings
+setup.template.name: "greeting-api"
+setup.template.pattern: "greeting-api-*"
+setup.template.enabled: true
+
+# ILM (Index Lifecycle Management) settings
+setup.ilm.enabled: true
+setup.ilm.rollover_alias: "greeting-api"
+setup.ilm.pattern: "{now/d}-000001"
+setup.ilm.policy_name: "greeting-api-policy"
+setup.ilm.overwrite: true
+
+# Custom ILM policy
+setup.ilm.policy:
+  phases:
+    hot:
+      min_age: 0ms
+      actions:
+        rollover:
+          max_age: 3h
+        set_priority:
+          priority: 100
+    warm:
+      min_age: 3h
+      actions:
+        set_priority:
+          priority: 50
+        readonly: {}
+    cold:
+      min_age: 6h
+      actions:
+        set_priority:
+          priority: 0
+        freeze: {}
+    delete:
+      min_age: 2d
+      actions:
+        delete: {}
+
+# Logging
+logging.level: info
+logging.to_files: false
+
+# Processors to enrich data
+processors:
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+  - add_cloud_metadata: ~
+  - add_kubernetes_metadata: ~

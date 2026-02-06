@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: greeting-api
+  namespace: greeting
+  labels:
+    app: greeting-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: greeting-api
+  template:
+    metadata:
+      labels:
+        app: greeting-api
+    spec:
+      containers:
+        # Main application container
+        - name: greeting-api
+          image: greeting-api:latest
+          imagePullPolicy: Never
+          command: ["/bin/sh", "-c"]
+          args:
+            - "./greeting-api 2>&1 | tee /var/log/app/greeting-api.log"
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+          volumeMounts:
+            - name: app-logs
+              mountPath: /var/log/app
+
+        # Filebeat sidecar container
+        - name: filebeat
+          image: docker.elastic.co/beats/filebeat:7.17.16
+          args:
+            - "-c"
+            - "/etc/filebeat/filebeat.yml"
+            - "-e"
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+          volumeMounts:
+            - name: app-logs
+              mountPath: /var/log/app
+              readOnly: true
+            - name: filebeat-config
+              mountPath: /etc/filebeat
+              readOnly: true
+
+      volumes:
+        - name: app-logs
+          emptyDir: {}
+        - name: filebeat-config
+          configMap:
+            name: filebeat-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: greeting-api
+  namespace: greeting
+spec:
+  selector:
+    app: greeting-api
+  ports:
+    - port: 8080
+      targetPort: 8080
+  type: NodePort

@@ -1,0 +1,22 @@
+# Binary
+greeting-api
+
+# Test artifacts
+coverage.out
+coverage.html
+
+# Generated mocks
+mock/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
