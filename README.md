@@ -132,43 +132,43 @@ Logs are written to stdout in JSON format:
 
 ## Kubernetes Deployment (Minikube)
 
-FilebeatサイドカーとElasticsearch/Kibanaを使ったログ収集環境をMinikubeにデプロイできます。
+You can deploy a log collection environment with Filebeat sidecar and Elasticsearch/Kibana to Minikube.
 
-### 前提条件
+### Prerequisites
 
-- Docker Desktop (WSL2統合有効)
+- Docker Desktop (WSL2 integration enabled)
 - Minikube
 - kubectl
 - make
 
-### 1. Minikubeの起動
+### 1. Start Minikube
 
 ```bash
 minikube start --memory=4096 --cpus=2
 ```
 
-### 2. Dockerイメージのビルド
+### 2. Build Docker Image
 
-Minikubeの環境でビルドします：
+Build within the Minikube environment:
 
 ```bash
 eval $(minikube docker-env)
 make docker-build
 ```
 
-### 3. Kubernetesへデプロイ
+### 3. Deploy to Kubernetes
 
 ```bash
 make k8s-deploy
 ```
 
-全てのPodが起動するまで待ちます：
+Wait for all Pods to start:
 
 ```bash
 make k8s-status
 ```
 
-以下のように全てのPodが`Running`になればOKです：
+Once all Pods show `Running` status, you're ready:
 
 ```
 NAME                             READY   STATUS    RESTARTS   AGE
@@ -177,53 +177,53 @@ greeting-api-xxx                 2/2     Running   0          60s
 kibana-xxx                       1/1     Running   0          60s
 ```
 
-### 4. APIの動作確認
+### 4. Verify API
 
-別ターミナルでAPIにアクセスします：
+Access the API from another terminal:
 
 ```bash
 minikube service greeting-api -n greeting --url
 ```
 
-表示されたURLでAPIをテスト：
+Test the API with the displayed URL:
 
 ```bash
 curl "http://127.0.0.1:<port>/greet?name=test"
 ```
 
-### 5. Kibanaでログを確認
+### 5. View Logs in Kibana
 
-Kibanaを開きます：
+Open Kibana:
 
 ```bash
 minikube service kibana -n greeting
 ```
 
-ブラウザが開いたら、以下の手順でログを確認：
+Once the browser opens, follow these steps to view logs:
 
-1. 左上の **☰** (ハンバーガーメニュー) をクリック
-2. **Stack Management** → **Index Patterns** を選択
-3. **Create index pattern** をクリック
-4. Index pattern に `greeting-api-*` を入力
-5. **Next step** をクリック
-6. Time field で `@timestamp` を選択
-7. **Create index pattern** をクリック
-8. 左上の **☰** → **Discover** を選択
-9. 左上のドロップダウンで `greeting-api-*` を選択
+1. Click the **hamburger menu** in the top left
+2. Select **Stack Management** then **Index Patterns**
+3. Click **Create index pattern**
+4. Enter `greeting-api-*` as the Index pattern
+5. Click **Next step**
+6. Select `@timestamp` for the Time field
+7. Click **Create index pattern**
+8. Click the **hamburger menu** then **Discover**
+9. Select `greeting-api-*` from the dropdown in the top left
 
-これでgreeting-apiのログが表示されます。
+You can now view the greeting-api logs.
 
-### Kubernetesコマンド一覧
+### Kubernetes Commands
 
-| コマンド | 説明 |
-|---------|------|
-| `make k8s-deploy` | Kubernetesにデプロイ |
-| `make k8s-status` | Pod/Serviceの状態確認 |
-| `make k8s-logs` | greeting-apiのログを表示 |
-| `make k8s-logs-filebeat` | Filebeatのログを表示 |
-| `make k8s-delete` | Kubernetesリソースを削除 |
+| Command | Description |
+|---------|-------------|
+| `make k8s-deploy` | Deploy to Kubernetes |
+| `make k8s-status` | Check Pod/Service status |
+| `make k8s-logs` | Show greeting-api logs |
+| `make k8s-logs-filebeat` | Show Filebeat logs |
+| `make k8s-delete` | Delete Kubernetes resources |
 
-### アーキテクチャ
+### Architecture
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -231,29 +231,29 @@ minikube service kibana -n greeting
 │                                             │
 │  ┌─────────────────────────────────────┐   │
 │  │ greeting-api Pod                    │   │
-│  │  ├── greeting-api (メインコンテナ)  │   │
-│  │  └── filebeat (サイドカー) ─────────┼───┼──► Elasticsearch
+│  │  ├── greeting-api (main container)  │   │
+│  │  └── filebeat (sidecar) ────────────┼───┼──► Elasticsearch
 │  └─────────────────────────────────────┘   │        │
 │                                             │        ▼
-│  Elasticsearch ◄─────────────────────────── Kibana (可視化)
+│  Elasticsearch ◄─────────────────────────── Kibana (visualization)
 └─────────────────────────────────────────────┘
 ```
 
-### トラブルシューティング
+### Troubleshooting
 
-**Elasticsearchが起動しない場合：**
+**If Elasticsearch fails to start:**
 ```bash
 minikube stop
 minikube delete
 minikube start --memory=6144 --cpus=2
 ```
 
-**Kibanaで500エラーが出る場合：**
+**If Kibana shows 500 errors:**
 ```bash
 kubectl rollout restart deployment kibana -n greeting
 ```
 
-**Dockerイメージが見つからない場合：**
+**If Docker image is not found:**
 ```bash
 eval $(minikube docker-env)
 make docker-build

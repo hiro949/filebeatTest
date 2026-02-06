@@ -84,18 +84,17 @@ compose-logs: ## Show docker-compose logs
 
 # Kubernetes targets
 k8s-deploy: docker-build ## Deploy to Kubernetes with Filebeat sidecar
-	kubectl apply -f k8s/namespace.yaml
-	kubectl apply -f k8s/elasticsearch.yaml
-	kubectl apply -f k8s/kibana.yaml
-	kubectl apply -f k8s/filebeat-configmap.yaml
-	kubectl apply -f k8s/greeting-api.yaml
+	kubectl apply -k k8s/
 	@echo "Waiting for pods to be ready..."
 	kubectl wait --for=condition=ready pod -l app=elasticsearch -n greeting --timeout=120s || true
 	kubectl wait --for=condition=ready pod -l app=kibana -n greeting --timeout=120s || true
 	kubectl wait --for=condition=ready pod -l app=greeting-api -n greeting --timeout=120s || true
 
 k8s-delete: ## Delete Kubernetes resources
-	kubectl delete -f k8s/ --ignore-not-found
+	kubectl delete -k k8s/ --ignore-not-found
+
+k8s-preview: ## Preview Kustomize output
+	kubectl kustomize k8s/
 
 k8s-status: ## Show Kubernetes status
 	kubectl get all -n greeting
