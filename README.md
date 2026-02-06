@@ -226,17 +226,20 @@ You can now view the greeting-api logs.
 ### Architecture
 
 ```
-┌─────────────────────────────────────────────┐
-│ Kubernetes (Minikube)                       │
-│                                             │
-│  ┌─────────────────────────────────────┐   │
-│  │ greeting-api Pod                    │   │
-│  │  ├── greeting-api (main container)  │   │
-│  │  └── filebeat (sidecar) ────────────┼───┼──► Elasticsearch
-│  └─────────────────────────────────────┘   │        │
-│                                             │        ▼
-│  Elasticsearch ◄─────────────────────────── Kibana (visualization)
-└─────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│ Kubernetes (Minikube)                                        │
+│                                                              │
+│  ┌─────────────────────────────────────┐                     │
+│  │ greeting-api Pod                    │                     │
+│  │  ├── greeting-api (main container)  │                     │
+│  │  └── filebeat (sidecar) ────────────┼──┐                  │
+│  └─────────────────────────────────────┘  │                  │
+│                                           ▼                  │
+│  ┌─────────────────┐              ┌─────────────────┐        │
+│  │     Kibana      │─────────────►│  Elasticsearch  │        │
+│  │ (visualization) │              │    (storage)    │        │
+│  └─────────────────┘              └─────────────────┘        │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 ### Troubleshooting
@@ -293,7 +296,7 @@ sudo service filebeat start
 
 ### Filebeat Configuration
 
-The provided [filebeat.yml](filebeat.yml) includes:
+The provided [filebeat.yml](k8s/filebeat.yml) includes:
 
 - JSON log parsing
 - Elasticsearch output configuration
